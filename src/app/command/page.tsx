@@ -4,12 +4,14 @@ import { useState, FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { FiClock, FiPlay } from 'react-icons/fi';
 import { IoLink } from "react-icons/io5";
+import { FiSmartphone } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
 export default function CommandPage() {
   const router = useRouter();
   const [link, setLink] = useState('');
   const [length, setLength] = useState('');
+  const [devices, setDevices] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -78,6 +80,28 @@ export default function CommandPage() {
                     onChange={(e) => setLength(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter duration in seconds"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="devices" className="block text-sm font-medium text-gray-300 mb-2">
+                  Number of Devices
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiSmartphone className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="devices"
+                    name="devices"
+                    type="number"
+                    required
+                    min="1"
+                    value={devices}
+                    onChange={(e) => setDevices(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter number of devices"
                   />
                 </div>
               </div>
