@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 // Dummy data
 const ITEMS_PER_PAGE = 10;
 
+
 const dummyDevices = Array.from({ length: 50 }, (_, i) => ({
   id: `DEV_${(i + 1).toString().padStart(3, '0')}`,
   status: ['idle', 'active', 'completed'][Math.floor(Math.random() * 3)],
