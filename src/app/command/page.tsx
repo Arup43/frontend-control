@@ -12,11 +12,38 @@ export default function CommandPage() {
   const [link, setLink] = useState('');
   const [length, setLength] = useState('');
   const [devices, setDevices] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    toast.success('Command execution started successfully!');
-    router.push('/dashboard');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/commands`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          link,
+          length: parseInt(length),
+          numOfDevices: parseInt(devices)
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result === true) {
+        toast.success('Command processing started successfully!');
+        router.push('/dashboard');
+      } else {
+        toast.error('Something went wrong. Please try again.');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      toast.error('Failed to process command. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -40,83 +67,95 @@ export default function CommandPage() {
             <p className="text-gray-400">Enter the post details below to process</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="link" className="block text-sm font-medium text-gray-300 mb-2">
-                  Post Link
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <IoLink className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="link"
-                    name="link"
-                    type="url"
-                    required
-                    value={link}
-                    onChange={(e) => setLink(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/video"
-                  />
-                </div>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center space-y-4 py-8">
+              <div className="relative w-20 h-20">
+                <div className="w-20 h-20 border-4 border-blue-200 rounded-full"></div>
+                <div className="absolute top-0 w-20 h-20 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
               </div>
-
-              <div>
-                <label htmlFor="length" className="block text-sm font-medium text-gray-300 mb-2">
-                  Video Length (minutes)
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiClock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="length"
-                    name="length"
-                    type="number"
-                    required
-                    value={length}
-                    onChange={(e) => setLength(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter duration in seconds"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="devices" className="block text-sm font-medium text-gray-300 mb-2">
-                  Number of Devices
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiSmartphone className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="devices"
-                    name="devices"
-                    type="number"
-                    required
-                    min="1"
-                    value={devices}
-                    onChange={(e) => setDevices(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter number of devices"
-                  />
-                </div>
-              </div>
+              <p className="text-gray-300 text-lg font-medium">
+                Generating AI Responses for Devices
+              </p>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="link" className="block text-sm font-medium text-gray-300 mb-2">
+                    Post Link
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <IoLink className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="link"
+                      name="link"
+                      type="url"
+                      required
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://example.com/video"
+                    />
+                  </div>
+                </div>
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-              >
-                <FiPlay className="w-5 h-5 mr-2" />
-                Execute Command
-              </button>
-            </div>
-          </form>
+                <div>
+                  <label htmlFor="length" className="block text-sm font-medium text-gray-300 mb-2">
+                    Video Length (minutes)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiClock className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="length"
+                      name="length"
+                      type="number"
+                      required
+                      value={length}
+                      onChange={(e) => setLength(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter duration in seconds"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="devices" className="block text-sm font-medium text-gray-300 mb-2">
+                    Number of Devices
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiSmartphone className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="devices"
+                      name="devices"
+                      type="number"
+                      required
+                      min="1"
+                      value={devices}
+                      onChange={(e) => setDevices(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter number of devices"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-xl transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+                >
+                  <FiPlay className="w-5 h-5 mr-2" />
+                  Execute Command
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="mt-8 bg-gray-700 rounded-xl p-6">
             <h3 className="text-lg font-medium text-white mb-4">Processing Status</h3>
