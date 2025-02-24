@@ -41,6 +41,7 @@ export default function CommandPage() {
         setIsLoading(false);
       }
     } catch (error) {
+      console.error('Error processing command:', error);
       toast.error('Failed to process command. Please try again.');
       setIsLoading(false);
     }
