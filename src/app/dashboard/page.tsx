@@ -36,6 +36,7 @@ export default function DashboardPage() {
     totalShares: 0,
     totalStream: 0
   });
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   // Add ref to store interval ID
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -75,6 +76,7 @@ export default function DashboardPage() {
         fetchDevices(currentPage),
         fetchStats()
       ]);
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -85,7 +87,7 @@ export default function DashboardPage() {
     // Initial fetch
     fetchAllData();
 
-    // Set up interval for auto-refresh every 5 seconds
+    // Set up interval for auto-refresh every 4 seconds
     intervalRef.current = setInterval(() => {
       fetchAllData();
     }, 5000);
@@ -141,7 +143,7 @@ export default function DashboardPage() {
         fetchAllData();
         intervalRef.current = setInterval(() => {
           fetchAllData();
-        }, 2000);
+        }, 5000);
       }
     };
 
@@ -198,6 +200,12 @@ export default function DashboardPage() {
                   </span>
                 )}
               </button>
+            </div>
+            <div className="text-sm text-gray-500 ml-4">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+              <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" 
+                    title="Auto-refreshing every 5 seconds" 
+              />
             </div>
           </div>
         </div>
