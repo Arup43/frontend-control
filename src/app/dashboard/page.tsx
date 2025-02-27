@@ -1,22 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiMonitor, FiPlay, FiCheck, FiChevronLeft, FiChevronRight, FiRefreshCw, FiCommand } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-
-// Dummy data
-const ITEMS_PER_PAGE = 10;
-
-
-const dummyDevices = Array.from({ length: 50 }, (_, i) => ({
-  id: `DEV_${(i + 1).toString().padStart(3, '0')}`,
-  status: ['idle', 'active', 'completed'][Math.floor(Math.random() * 3)],
-  like: Math.random() > 0.5 ? 'completed' : 'to be done',
-  comment: Math.random() > 0.5 ? 'completed' : 'to be done',
-  share: Math.random() > 0.5 ? 'completed' : 'to be done',
-  stream: Math.random() > 0.5 ? 'completed' : 'to be done',
-}));
+import { Device, DevicesResponse } from '../../../types/DeviceTypes';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -30,40 +18,64 @@ const getStatusColor = (status: string) => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deviceData, setDeviceData] = useState<DevicesResponse>({
+    devices: [],
+    currentPage: 0,
+    totalPages: 0,
+    totalItems: 0
+  });
 
-  const executionOngoing = dummyDevices.filter(d => d.status === 'active').length;
-  const executionCompleted = dummyDevices.filter(d => d.status === 'completed').length;
-  const activeDevices = executionOngoing + executionCompleted;
+  const fetchDevices = async (page: number) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/devices?page=${page}`);
+      if (!response.ok) throw new Error('Failed to fetch devices');
+      const data: DevicesResponse = await response.json();
+      console.log(data);
+      setDeviceData(data);
+    } catch (error) {
+      console.error('Error fetching devices:', error);
+      toast.error('Failed to fetch devices');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
-  const totalPages = Math.ceil(dummyDevices.length / ITEMS_PER_PAGE);
-  const currentDevices = dummyDevices.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  // Check if all devices are completed
-  const allDevicesCompleted = dummyDevices.every(device => 
-    device.status === 'completed' &&
-    device.like === 'completed' &&
-    device.comment === 'completed' &&
-    device.share === 'completed' &&
-    device.stream === 'completed'
-  );
+  useEffect(() => {
+    fetchDevices(currentPage);
+  }, [currentPage]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Here you would typically fetch new data from your API
-    // For now, we'll just simulate a delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    await fetchDevices(currentPage);
     toast.success('Status refreshed successfully!');
   };
 
   const handleExecuteCommand = () => {
     router.push('/command');
   };
+
+  const getStatusDisplay = (device: Device) => ({
+    like: device.hasLike ? 'completed' : 'to be done',
+    comment: device.hasComment ? 'completed' : 'to be done',
+    share: device.hasShare ? 'completed' : 'to be done',
+    stream: device.hasStream ? 'completed' : 'to be done'
+  });
+
+  const activeDevices = deviceData.devices.filter(d => d.isActive).length;
+  const executionOngoing = deviceData.devices.filter(d => d.status === 'active').length;
+  const executionCompleted = deviceData.devices.filter(d => d.status === 'completed').length;
+
+  const allDevicesCompleted = deviceData.devices.every(device => 
+    device.status === 'completed' &&
+    device.hasLike &&
+    device.hasComment &&
+    device.hasShare &&
+    device.hasStream
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,38 +182,41 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {currentDevices.map((device) => (
-                    <tr key={device.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {device.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(device.status)}`}>
-                          {device.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(device.like)}`}>
-                          {device.like}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(device.comment)}`}>
-                          {device.comment}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(device.share)}`}>
-                          {device.share}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(device.stream)}`}>
-                          {device.stream}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {deviceData.devices.map((device) => {
+                    const status = getStatusDisplay(device);
+                    return (
+                      <tr key={device.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {device.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(device.status)}`}>
+                            {device.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status.like)}`}>
+                            {status.like}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status.comment)}`}>
+                            {status.comment}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status.share)}`}>
+                            {status.share}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status.stream)}`}>
+                            {status.stream}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -211,19 +226,19 @@ export default function DashboardPage() {
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 rounded-b-xl">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, dummyDevices.length)} of {dummyDevices.length} results
+                Showing {(deviceData.currentPage * 10) + 1} to {Math.min((deviceData.currentPage + 1) * 10, deviceData.totalItems)} of {deviceData.totalItems} results
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                  disabled={deviceData.currentPage === 0}
                   className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FiChevronLeft className="h-5 w-5" />
                 </button>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(deviceData.totalPages - 1, p + 1))}
+                  disabled={deviceData.currentPage === deviceData.totalPages - 1}
                   className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FiChevronRight className="h-5 w-5" />
