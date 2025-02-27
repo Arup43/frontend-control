@@ -14,3 +14,13 @@ export interface DevicesResponse {
     totalPages: number;
     totalItems: number;
 }
+
+export interface DeviceStats {
+    totalActiveDevices: number;
+    executionOngoing: number;
+    executionCompleted: number;
+    totalLikes: number;
+    totalComments: number;
+    totalShares: number;
+    totalStream: number;
+}

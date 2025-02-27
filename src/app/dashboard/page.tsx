@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FiMonitor, FiPlay, FiCheck, FiChevronLeft, FiChevronRight, FiRefreshCw, FiCommand } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { Device, DevicesResponse } from '../../../types/DeviceTypes';
+import { Device, DevicesResponse, DeviceStats } from '../../../types/DeviceTypes';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -27,6 +27,18 @@ export default function DashboardPage() {
     totalPages: 0,
     totalItems: 0
   });
+  const [stats, setStats] = useState<DeviceStats>({
+    totalActiveDevices: 0,
+    executionOngoing: 0,
+    executionCompleted: 0,
+    totalLikes: 0,
+    totalComments: 0,
+    totalShares: 0,
+    totalStream: 0
+  });
+
+  // Add ref to store interval ID
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchDevices = async (page: number) => {
     try {
@@ -44,15 +56,101 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    fetchDevices(currentPage);
-  }, [currentPage]);
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/devices/stats`);
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      const data: DeviceStats = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      toast.error('Failed to fetch device stats');
+    }
+  };
 
+  // Combined fetch function for both APIs
+  const fetchAllData = async () => {
+    try {
+      await Promise.all([
+        fetchDevices(currentPage),
+        fetchStats()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  // Setup auto-refresh
+  useEffect(() => {
+    // Initial fetch
+    fetchAllData();
+
+    // Set up interval for auto-refresh every 5 seconds
+    intervalRef.current = setInterval(() => {
+      fetchAllData();
+    }, 5000);
+
+    // Cleanup interval on component unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [currentPage]); // Re-run when page changes
+
+  // Update manual refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchDevices(currentPage);
+    
+    // Clear existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Fetch data
+    await fetchAllData();
+
+    // Restart interval
+    intervalRef.current = setInterval(() => {
+      fetchAllData();
+    }, 5000);
+
+    setIsRefreshing(false);
     toast.success('Status refreshed successfully!');
   };
+
+  // Clean up interval when component unmounts
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  // Optional: Pause auto-refresh when tab is not visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Clear interval when tab is not visible
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      } else {
+        // Restart interval and fetch fresh data when tab becomes visible
+        fetchAllData();
+        intervalRef.current = setInterval(() => {
+          fetchAllData();
+        }, 2000);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const handleExecuteCommand = () => {
     router.push('/command');
@@ -65,22 +163,7 @@ export default function DashboardPage() {
     stream: device.hasStream ? 'completed' : 'to be done'
   });
 
-  const activeDevices = deviceData.devices.filter(d => d.isActive).length;
-  const executionOngoing = deviceData.devices.filter(d => d.status === 'active').length;
-  const executionCompleted = deviceData.devices.filter(d => d.status === 'completed').length;
-
-  const allDevicesCompleted = deviceData.devices.every(device => 
-    device.status === 'completed' &&
-    device.hasLike &&
-    device.hasComment &&
-    device.hasShare &&
-    device.hasStream
-  );
-
-  const totalLikes = deviceData.devices.filter(d => d.hasLike).length;
-  const totalComments = deviceData.devices.filter(d => d.hasComment).length;
-  const totalShares = deviceData.devices.filter(d => d.hasShare).length;
-  const totalStreams = deviceData.devices.filter(d => d.hasStream).length;
+  const allDevicesCompleted = stats.totalActiveDevices > 0 && stats.totalActiveDevices === stats.executionCompleted;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,6 +192,11 @@ export default function DashboardPage() {
               >
                 <FiCommand className="h-4 w-4 mr-2" />
                 Execute Command
+                {!allDevicesCompleted && stats.totalActiveDevices > 0 && (
+                  <span className="ml-2 text-xs">
+                    ({stats.executionCompleted}/{stats.totalActiveDevices} completed)
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -127,7 +215,7 @@ export default function DashboardPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Active Devices</p>
-                <p className="text-2xl font-semibold text-gray-900">{activeDevices}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.totalActiveDevices}</p>
               </div>
             </div>
           </div>
@@ -140,7 +228,7 @@ export default function DashboardPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Execution Ongoing</p>
-                <p className="text-2xl font-semibold text-gray-900">{executionOngoing}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.executionOngoing}</p>
               </div>
             </div>
           </div>
@@ -153,7 +241,7 @@ export default function DashboardPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Execution Completed</p>
-                <p className="text-2xl font-semibold text-gray-900">{executionCompleted}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.executionCompleted}</p>
               </div>
             </div>
           </div>
@@ -165,7 +253,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-600 mb-1">Total Likes</p>
-                <p className="text-2xl font-bold text-purple-900">{totalLikes}</p>
+                <p className="text-2xl font-bold text-purple-900">{stats.totalLikes}</p>
               </div>
               <div className="p-3 rounded-full bg-purple-200 bg-opacity-50">
                 <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +268,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-600 mb-1">Total Comments</p>
-                <p className="text-2xl font-bold text-blue-900">{totalComments}</p>
+                <p className="text-2xl font-bold text-blue-900">{stats.totalComments}</p>
               </div>
               <div className="p-3 rounded-full bg-blue-200 bg-opacity-50">
                 <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,7 +283,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-600 mb-1">Total Shares</p>
-                <p className="text-2xl font-bold text-green-900">{totalShares}</p>
+                <p className="text-2xl font-bold text-green-900">{stats.totalShares}</p>
               </div>
               <div className="p-3 rounded-full bg-green-200 bg-opacity-50">
                 <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +298,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-pink-600 mb-1">Total Streams</p>
-                <p className="text-2xl font-bold text-pink-900">{totalStreams}</p>
+                <p className="text-2xl font-bold text-pink-900">{stats.totalStream}</p>
               </div>
               <div className="p-3 rounded-full bg-pink-200 bg-opacity-50">
                 <svg className="h-6 w-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
