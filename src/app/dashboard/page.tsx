@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [deviceData, setDeviceData] = useState<DevicesResponse>({
     devices: [],
     currentPage: 0,
