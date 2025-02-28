@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { FiMonitor, FiPlay, FiCheck, FiChevronLeft, FiChevronRight, FiRefreshCw, FiCommand } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -69,8 +69,8 @@ export default function DashboardPage() {
     }
   };
 
-  // Combined fetch function for both APIs
-  const fetchAllData = async () => {
+  // Wrap with useCallback
+  const fetchAllData = useCallback(async () => {
     try {
       await Promise.all([
         fetchDevices(currentPage),
@@ -80,25 +80,22 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error fetching data:', error);
     }
-  };
+  }, [currentPage]); // Add dependencies here
 
-  // Setup auto-refresh
+  // Now this effect won't run unnecessarily
   useEffect(() => {
-    // Initial fetch
     fetchAllData();
-
-    // Set up interval for auto-refresh every 4 seconds
+    
     intervalRef.current = setInterval(() => {
       fetchAllData();
     }, 5000);
-
-    // Cleanup interval on component unmount
+    
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [currentPage]); // Re-run when page changes
+  }, [fetchAllData]); // fetchAllData is now stable between renders
 
   // Update manual refresh handler
   const handleRefresh = async () => {
