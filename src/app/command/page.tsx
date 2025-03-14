@@ -10,8 +10,10 @@ import { useRouter } from 'next/navigation';
 export default function CommandPage() {
   const router = useRouter();
   const [link, setLink] = useState('');
-  const [length, setLength] = useState('');
+  const [len, setLen] = useState('');
   const [devices, setDevices] = useState('');
+  const [subscribe, setSubscribe] = useState(false);
+  const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -19,15 +21,17 @@ export default function CommandPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/commands`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/commands/yt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           link,
-          length: parseInt(length),
-          numOfDevices: parseInt(devices)
+          len: parseInt(len),
+          numOfDevices: parseInt(devices),
+          subscribe,
+          description
         }),
       });
 
@@ -65,7 +69,7 @@ export default function CommandPage() {
         <div className="bg-gray-800 rounded-2xl shadow-xl p-8">
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">Automatic Interaction Processing</h2>
-            <p className="text-gray-400">Enter the post details below to process</p>
+            <p className="text-gray-400">Enter the youtube video details below to process</p>
           </div>
 
           {isLoading ? (
@@ -83,7 +87,7 @@ export default function CommandPage() {
               <div className="space-y-6">
                 <div>
                   <label htmlFor="link" className="block text-sm font-medium text-gray-300 mb-2">
-                    Post Link
+                    Youtube Video Link
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -103,20 +107,20 @@ export default function CommandPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="length" className="block text-sm font-medium text-gray-300 mb-2">
-                    Video Length (minutes)
+                  <label htmlFor="len" className="block text-sm font-medium text-gray-300 mb-2">
+                    Video Length (seconds)
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <FiClock className="h-5 w-5 text-gray-400" />
                     </div>
                     <input
-                      id="length"
-                      name="length"
+                      id="len"
+                      name="len"
                       type="number"
                       required
-                      value={length}
-                      onChange={(e) => setLength(e.target.value)}
+                      value={len}
+                      onChange={(e) => setLen(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Enter duration in seconds"
                     />
@@ -143,6 +147,37 @@ export default function CommandPage() {
                       placeholder="Enter number of devices"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center">
+                    <input
+                      id="subscribe"
+                      name="subscribe"
+                      type="checkbox"
+                      checked={subscribe}
+                      onChange={(e) => setSubscribe(e.target.checked)}
+                      className="h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-600 rounded bg-gray-700"
+                    />
+                    <label htmlFor="subscribe" className="ml-2 block text-sm font-medium text-gray-300">
+                      Subscribe to channel
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    className="block w-full px-3 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter video description"
+                  />
                 </div>
               </div>
 
